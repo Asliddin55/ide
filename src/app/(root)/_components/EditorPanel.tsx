@@ -1,4 +1,5 @@
 "use client";
+
 import { useCodeEditorStore } from "@/store/useCodeEditorStore";
 import { useEffect, useState } from "react";
 import { defineMonacoThemes, LANGUAGE_CONFIG } from "../_constants";
@@ -11,17 +12,24 @@ import { EditorPanelSkeleton } from "./EditorPanelSkeleton";
 import useMounted from "@/hooks/useMounted";
 import ShareSnippetDialog from "./ShareSnippetDialog";
 
+// 🛠 Importing correct type for Monaco editor
+import type { editor as MonacoEditor } from "monaco-editor";
+
 function EditorPanel() {
   const clerk = useClerk();
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  
+  // 🛠 editor typed correctly
   const { language, theme, fontSize, editor, setFontSize, setEditor } = useCodeEditorStore();
-
   const mounted = useMounted();
 
   useEffect(() => {
     const savedCode = localStorage.getItem(`editor-code-${language}`);
     const newCode = savedCode || LANGUAGE_CONFIG[language].defaultCode;
-    if (editor) editor.setValue(newCode);
+    if (editor) {
+      // 🛠 Cast editor to correct type
+      (editor as MonacoEditor.IStandaloneCodeEditor).setValue(newCode);
+    }
   }, [language, editor]);
 
   useEffect(() => {
@@ -31,7 +39,9 @@ function EditorPanel() {
 
   const handleRefresh = () => {
     const defaultCode = LANGUAGE_CONFIG[language].defaultCode;
-    if (editor) editor.setValue(defaultCode);
+    if (editor) {
+      (editor as MonacoEditor.IStandaloneCodeEditor).setValue(defaultCode);
+    }
     localStorage.removeItem(`editor-code-${language}`);
   };
 
@@ -50,6 +60,7 @@ function EditorPanel() {
   return (
     <div className="relative">
       <div className="relative bg-[#12121a]/90 backdrop-blur rounded-xl border border-white/[0.05] p-6">
+        
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -61,6 +72,7 @@ function EditorPanel() {
               <p className="text-xs text-gray-500">Codlang va ishga tushuring</p>
             </div>
           </div>
+
           <div className="flex items-center gap-3">
             {/* Font Size Slider */}
             <div className="flex items-center gap-3 px-3 py-2 bg-[#1e1e2e] rounded-lg ring-1 ring-white/5">
@@ -80,6 +92,7 @@ function EditorPanel() {
               </div>
             </div>
 
+            {/* Refresh button */}
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
@@ -95,16 +108,16 @@ function EditorPanel() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsShareDialogOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg overflow-hidden bg-gradient-to-r
-               from-blue-500 to-blue-600 opacity-90 hover:opacity-100 transition-opacity"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg overflow-hidden bg-gradient-to-r from-blue-500 to-blue-600 opacity-90 hover:opacity-100 transition-opacity"
             >
               <ShareIcon className="size-4 text-white" />
-              <span className="text-sm font-medium text-white ">Ulashish</span>
+              <span className="text-sm font-medium text-white">Ulashish</span>
             </motion.button>
+
           </div>
         </div>
 
-        {/* Editor  */}
+        {/* Editor */}
         <div className="relative group rounded-xl overflow-hidden ring-1 ring-white/[0.05]">
           {clerk.loaded && (
             <Editor
@@ -113,7 +126,7 @@ function EditorPanel() {
               onChange={handleEditorChange}
               theme={theme}
               beforeMount={defineMonacoThemes}
-              onMount={(editor) => setEditor(editor)}
+              onMount={(editorInstance) => setEditor(editorInstance)}
               options={{
                 minimap: { enabled: false },
                 fontSize,
@@ -141,8 +154,10 @@ function EditorPanel() {
           {!clerk.loaded && <EditorPanelSkeleton />}
         </div>
       </div>
+
       {isShareDialogOpen && <ShareSnippetDialog onClose={() => setIsShareDialogOpen(false)} />}
     </div>
   );
 }
+
 export default EditorPanel;
