@@ -1,10 +1,9 @@
 import { CodeEditorState } from "./../types/index";
 import { LANGUAGE_CONFIG } from "@/app/(root)/_constants";
 import { create } from "zustand";
-import { Monaco } from "@monaco-editor/react";
+import type { editor as MonacoEditor } from "monaco-editor"; // TO'G'RI IMPORT
 
 const getInitialState = () => {
-  // if we're on the server, return default values
   if (typeof window === "undefined") {
     return {
       language: "javascript",
@@ -13,7 +12,6 @@ const getInitialState = () => {
     };
   }
 
-  // if we're on the client, return values from local storage bc localStorage is a browser API.
   const savedLanguage = localStorage.getItem("editor-language") || "javascript";
   const savedTheme = localStorage.getItem("editor-theme") || "vs-dark";
   const savedFontSize = localStorage.getItem("editor-font-size") || 16;
@@ -38,7 +36,7 @@ export const useCodeEditorStore = create<CodeEditorState>((set, get) => {
 
     getCode: () => get().editor?.getValue() || "",
 
-    setEditor: (editor: Monaco) => {
+    setEditor: (editor: MonacoEditor.IStandaloneCodeEditor) => { // TO'G'RI YASALDI
       const savedCode = localStorage.getItem(`editor-code-${get().language}`);
       if (savedCode) editor.setValue(savedCode);
 
@@ -56,12 +54,10 @@ export const useCodeEditorStore = create<CodeEditorState>((set, get) => {
     },
 
     setLanguage: (language: string) => {
-      // Save current language code before switching
       const currentCode = get().editor?.getValue();
       if (currentCode) {
         localStorage.setItem(`editor-code-${get().language}`, currentCode);
       }
-
       localStorage.setItem("editor-language", language);
 
       set({
@@ -86,9 +82,7 @@ export const useCodeEditorStore = create<CodeEditorState>((set, get) => {
         const runtime = LANGUAGE_CONFIG[language].pistonRuntime;
         const response = await fetch("https://emkc.org/api/v2/piston/execute", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             language: runtime.language,
             version: runtime.version,
@@ -97,43 +91,25 @@ export const useCodeEditorStore = create<CodeEditorState>((set, get) => {
         });
 
         const data = await response.json();
-
         console.log("data back from piston:", data);
 
-        // handle API-level erros
         if (data.message) {
           set({ error: data.message, executionResult: { code, output: "", error: data.message } });
           return;
         }
 
-        // handle compilation errors
         if (data.compile && data.compile.code !== 0) {
           const error = data.compile.stderr || data.compile.output;
-          set({
-            error,
-            executionResult: {
-              code,
-              output: "",
-              error,
-            },
-          });
+          set({ error, executionResult: { code, output: "", error } });
           return;
         }
 
         if (data.run && data.run.code !== 0) {
           const error = data.run.stderr || data.run.output;
-          set({
-            error,
-            executionResult: {
-              code,
-              output: "",
-              error,
-            },
-          });
+          set({ error, executionResult: { code, output: "", error } });
           return;
         }
 
-        // if we get here, execution was successful
         const output = data.run.output;
 
         set({
